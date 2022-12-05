@@ -1,0 +1,17 @@
+{
+    "payers": [ 
+        {
+        "payer": "uhc",
+        "files": [
+            "https://uhc-tic-mrf.azureedge.net/public-mrf/2022-11-01/2022-11-01_ALL-SAVERS-INSURANCE-COMPANY_Insurer_PS1-50_C2_in-network-rates.json.gz",
+            "https://uhc-tic-mrf.azureedge.net/public-mrf/2022-11-01/2022-11-01_Bind-Benefits--Inc-_Third-Party-Administrator_UNITEDHEALTHCARE-CHOICE-PLUS_BQ_in-network-rates.json.gz"
+        ]
+    },
+    {
+        "payer": "cigna",
+        "files": [
+            "https://d25kgz5rikkq4n.cloudfront.net/cost_transparency/mrf/in-network-rates/reporting_month=2022-11/2022-11-01_cigna-health-life-insurance-company_national-oap_in-network-rates.json.gz?Expires=1670535335&Signature=sonJbsjHuduhMjWlDzcvoEQhJd5Cow3YaKBYBJILQEeWcwtoMgiCEVIZKx02m9ZPdU-Om6cRC2Us0dkH-zdB4DfFV2TKh~vtT8zSY-mJX~TbCOL9QbpPw8-7tV4bvxOTsA8QnX~sYQFtun~mY4EvPFbdnTqq9hdgx1McH3rL~XrsX9iqaE1wmagutWcOGh6wtRb10lVzM6Ce0vHhxINSYRDe0DICmddwpP4DPStfPbojCRvYH0AZhvMT1F0sDKJhiRwWWC~FNsSaDbA2oplXmpcFbpojcv~w86Wavg11DUFwNv9xxZ7FM~gvizYmegDGBjAxj1bDKMSzcv9UHxovdw__&Key-Pair-Id=K1NVBEPVH9LWJP"
+        ]
+    }
+    ]
+}
