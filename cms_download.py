@@ -12,13 +12,17 @@
 #See the License for the specific language governing permissions and
 #limitations under the License.
 
+import asyncio
 import base64
+import concurrent.futures
 import functions_framework
+import functools
+import gcsfs
 import os
 import requests
+
 from google.cloud import storage
 from urllib.parse import urlparse
-import gcsfs
 
 uploadKey = f"{os.environ.get('DEST_BUCKET')}/{os.environ.get('DEST_PATH')}"
 print(f"Upload location is {uploadKey}")
@@ -27,13 +31,44 @@ def parse_filename(url):
     parsedUrl = urlparse(url)
     return os.path.basename(parsedUrl.path)
 
-def download_file(url,destBlobName,payer):
+async def get_size(url):
+    response = requests.head(url)
+    size = int(response.headers['Content-Length'])
+    return size
+
+def download_range(url, start, end, output, payer):
+    headers = {'Range': f'bytes={start}-{end}'}
+    response = requests.get(url, headers=headers)
     fs = gcsfs.GCSFileSystem(project=os.environ.get('GCP_PROJECT'))
-    with requests.get(url, stream=True) as r:
-        r.raise_for_status()
-        with fs.open(f"{uploadKey}/{payer}/{destBlobName}", 'wb') as f: 
-            for chunk in r.iter_content(chunk_size=8192): 
-                f.write(chunk)
+    with fs.open(f"{uploadKey}/{payer}/{output}", 'wb') as f: 
+        for part in response.iter_content(1024):
+            f.write(part)
+
+async def download(run, loop, url, output, payer, chunk_size=10485760):
+    file_size = await get_size(url)
+    chunks = range(0, file_size, chunk_size)
+    fs = gcsfs.GCSFileSystem(project=os.environ.get('GCP_PROJECT'))
+    tasks = [
+        run(
+            download_range,
+            url,
+            start,
+            start + chunk_size - 1,
+            f'{output}.part{i}',
+            payer,
+        )
+        for i, start in enumerate(chunks)
+    ]
+
+    await asyncio.wait(tasks)
+    
+    with fs.open(f"{uploadKey}/{payer}/{output}", 'wb') as o:
+            for i in range(len(chunks)):
+                chunk_path = f'{output}.part{i}'
+
+                with fs.open(f"{uploadKey}/{payer}/{chunk_path}", 'rb') as s:
+                    o.write(s.read())
+                fs.rm(f"{uploadKey}/{payer}/{chunk_path}")
 
 @functions_framework.cloud_event
 def subscribe(pubsub_event):
@@ -41,6 +76,16 @@ def subscribe(pubsub_event):
     payer = pubsub_event.data["message"]["attributes"]["payer"]
     filename = parse_filename(url)
     print(f"Streaming {filename} from {url} to {uploadKey}/{payer}")
-    download_file(url,filename,payer)
-    print(f"Uploaded {filename} to {uploadKey}/{payer}")
-    return (200)
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=8)
+    loop = asyncio.new_event_loop()
+    run = functools.partial(loop.run_in_executor, executor)
+    asyncio.set_event_loop(loop)
+
+    try:
+        loop.run_until_complete(
+            download(run, loop, url, filename, payer)
+        )
+    finally:
+        loop.close()
+    return 'Ok', 200
+    
